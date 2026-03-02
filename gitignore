@@ -1,0 +1,20 @@
+# Secrets
+.streamlit/secrets.toml
+config_DEEPSEEK.json
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

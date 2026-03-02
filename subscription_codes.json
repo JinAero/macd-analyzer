@@ -1,0 +1,25 @@
+{
+  "codes": {
+    "STD-TEST-1234": {
+      "plan": "standard",
+      "email": "test@test.com",
+      "issued": "2026-03-01",
+      "expires": "2026-04-01",
+      "active": true
+    },
+    "PRO-TEST-1234": {
+      "plan": "pro",
+      "email": "test@test.com",
+      "issued": "2026-03-01",
+      "expires": "2026-04-01",
+      "active": true
+    },
+    "STD-GUMROAD-0001": {
+      "plan": "standard",
+      "email": "buyer1@gmail.com",
+      "issued": "2026-03-05",
+      "expires": "2026-04-05",
+      "active": true
+    }
+  }
+}
