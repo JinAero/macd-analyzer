@@ -22,50 +22,52 @@ from datetime import datetime, timezone
 # ─────────────────────────────────────────
 # DeepSeek API 키 로드
 # 우선순위 1: Streamlit Cloud Secrets (배포 환경)
-# 우선순위 2: config_DEEPSEEK.json (로컬 환경)
+# 우선순위 2: (로컬 환경)
 # ─────────────────────────────────────────
 def verify_code(code: str) -> dict:
-    """구독 코드 검증 — subscription_codes.json 대조"""
+    """구독 코드 검증 — Streamlit Secrets 우선, 없으면 파일"""
     code = code.strip()
     lang = st.session_state.get("lang", "en")
     if not code:
         return {"valid": False, "msg": "Please enter a code." if lang == "en" else "코드를 입력하세요."}
 
-    # JSON 파일 위치 탐색
-    paths = [
-        Path(__file__).parent / "subscription_codes.json",
-        Path("subscription_codes.json"),
-    ]
-    for p in paths:
-        if p.exists():
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-                codes = data.get("codes", {})
-                if code in codes:
-                    entry = codes[code]
-                    if not entry.get("active", False):
-                        return {"valid": False, "msg": "Inactive code." if st.session_state.get("lang","en")=="en" else "비활성화된 코드입니다."}
-                    # 만료일 체크
-                    expires = entry.get("expires", "")
-                    if expires:
-                        from datetime import date
-                        exp = date.fromisoformat(expires)
-                        if date.today() > exp:
-                            return {"valid": False, "msg": f"Code expired ({expires})." if st.session_state.get("lang","en")=="en" else f"만료된 코드입니다. (만료: {expires})"}
-                    return {"valid": True, "plan": entry["plan"], "email": entry.get("email", "")}
-                else:
-                    return {"valid": False, "msg": "Code not found." if st.session_state.get("lang","en")=="en" else "존재하지 않는 코드입니다."}
-            except Exception as e:
-                return {"valid": False, "msg": f"Code file error: {e}" if st.session_state.get("lang","en")=="en" else f"코드 파일 오류: {e}"}
+    # Secrets에서 먼저 읽기 (배포 환경)
+    try:
+        data = json.loads(st.secrets["SUBSCRIPTION_CODES"])
+    except Exception:
+        # JSON 파일에서 읽기 (로컬 개발용)
+        paths = [
+            Path(__file__).parent / "subscription_codes.json",
+            Path("subscription_codes.json"),
+        ]
+        data = None
+        for p in paths:
+            if p.exists():
+                try:
+                    data = json.loads(p.read_text(encoding="utf-8"))
+                    break
+                except Exception:
+                    continue
+        if data is None:
+            return {"valid": False, "msg": "Code system unavailable." if lang == "en" else "코드 시스템 오류입니다."}
 
-    # 파일 없으면 — 개발용 폴백 (배포 전 제거)
-    if code.startswith("STD-"):
-        return {"valid": True, "plan": "standard"}
-    elif code.startswith("PRO-"):
-        return {"valid": True, "plan": "pro"}
-
-    return {"valid": False, "msg": T[st.session_state.get("lang","en")]["code_invalid"]}
-
+    try:
+        codes = data.get("codes", {})
+        if code in codes:
+            entry = codes[code]
+            if not entry.get("active", False):
+                return {"valid": False, "msg": "Inactive code." if lang == "en" else "비활성화된 코드입니다."}
+            expires = entry.get("expires", "")
+            if expires:
+                from datetime import date
+                exp = date.fromisoformat(expires)
+                if date.today() > exp:
+                    return {"valid": False, "msg": f"Code expired ({expires})." if lang == "en" else f"만료된 코드입니다. (만료: {expires})"}
+            return {"valid": True, "plan": entry["plan"], "email": entry.get("email", "")}
+        else:
+            return {"valid": False, "msg": "Code not found." if lang == "en" else "존재하지 않는 코드입니다."}
+    except Exception as e:
+        return {"valid": False, "msg": f"Code file error: {e}" if lang == "en" else f"코드 파일 오류: {e}"}
 
 def load_api_key() -> str:
     # 1) Streamlit Cloud Secrets
