@@ -318,8 +318,8 @@ FREE_TF       = ["1h"]
 STANDARD_TF   = ["1h", "30m", "15m", "5m"]
 PRO_TF        = INTERVALS
 
-# Gumroad 구독 링크 (나중에 실제 URL로 교체)
-GUMROAD_STANDARD = "https://gumroad.com/l/your-standard-link"
+# Gumroad 구독 링크 
+GUMROAD_STANDARD = "https://sparkle488.gumroad.com/l/kwfzz"
 GUMROAD_PRO      = "https://gumroad.com/l/your-pro-link"
 
 
