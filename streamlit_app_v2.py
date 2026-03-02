@@ -322,7 +322,7 @@ PRO_TF        = INTERVALS
 
 # Gumroad 구독 링크 
 GUMROAD_STANDARD = "https://sparkle488.gumroad.com/l/kwfzz"
-GUMROAD_PRO      = "https://gumroad.com/l/your-pro-link"
+GUMROAD_PRO      = "https://sparkle488.gumroad.com/l/zktao"
 
 
 # ─────────────────────────────────────────
