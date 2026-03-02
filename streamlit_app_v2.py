@@ -201,7 +201,7 @@ hr { border-color: var(--border); margin: 1rem 0; }
 # ─────────────────────────────────────────
 # 상수
 # ─────────────────────────────────────────
-BINANCE_URL   = "https://api.binance.com/api/v3/klines"
+BINANCE_URL   = "https://api.binance.us/api/v3/klines"
 INTERVALS     = ["1h", "30m", "15m", "5m", "3m", "1m"]
 INTERVAL_LABELS = {
     "ko": {"1m": "1분봉", "3m": "3분봉", "5m": "5분봉",
