@@ -199,6 +199,17 @@ hr { border-color: var(--border); margin: 1rem 0; }
 </style>
 """, unsafe_allow_html=True)
 
+# ─── Google Analytics ───
+st.markdown("""
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1FGG7ZPJET"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-1FGG7ZPJET');
+</script>
+""", unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────
 # 상수
