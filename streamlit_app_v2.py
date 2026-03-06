@@ -22,52 +22,50 @@ from datetime import datetime, timezone
 # ─────────────────────────────────────────
 # DeepSeek API 키 로드
 # 우선순위 1: Streamlit Cloud Secrets (배포 환경)
-# 우선순위 2: (로컬 환경)
+# 우선순위 2: config_DEEPSEEK.json (로컬 환경)
 # ─────────────────────────────────────────
 def verify_code(code: str) -> dict:
-    """구독 코드 검증 — Streamlit Secrets 우선, 없으면 파일"""
+    """구독 코드 검증 — subscription_codes.json 대조"""
     code = code.strip()
     lang = st.session_state.get("lang", "en")
     if not code:
         return {"valid": False, "msg": "Please enter a code." if lang == "en" else "코드를 입력하세요."}
 
-    # Secrets에서 먼저 읽기 (배포 환경)
-    try:
-        data = json.loads(st.secrets["SUBSCRIPTION_CODES"])
-    except Exception:
-        # JSON 파일에서 읽기 (로컬 개발용)
-        paths = [
-            Path(__file__).parent / "subscription_codes.json",
-            Path("subscription_codes.json"),
-        ]
-        data = None
-        for p in paths:
-            if p.exists():
-                try:
-                    data = json.loads(p.read_text(encoding="utf-8"))
-                    break
-                except Exception:
-                    continue
-        if data is None:
-            return {"valid": False, "msg": "Code system unavailable." if lang == "en" else "코드 시스템 오류입니다."}
+    # JSON 파일 위치 탐색
+    paths = [
+        Path(__file__).parent / "subscription_codes.json",
+        Path("subscription_codes.json"),
+    ]
+    for p in paths:
+        if p.exists():
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+                codes = data.get("codes", {})
+                if code in codes:
+                    entry = codes[code]
+                    if not entry.get("active", False):
+                        return {"valid": False, "msg": "Inactive code." if st.session_state.get("lang","en")=="en" else "비활성화된 코드입니다."}
+                    # 만료일 체크
+                    expires = entry.get("expires", "")
+                    if expires:
+                        from datetime import date
+                        exp = date.fromisoformat(expires)
+                        if date.today() > exp:
+                            return {"valid": False, "msg": f"Code expired ({expires})." if st.session_state.get("lang","en")=="en" else f"만료된 코드입니다. (만료: {expires})"}
+                    return {"valid": True, "plan": entry["plan"], "email": entry.get("email", "")}
+                else:
+                    return {"valid": False, "msg": "Code not found." if st.session_state.get("lang","en")=="en" else "존재하지 않는 코드입니다."}
+            except Exception as e:
+                return {"valid": False, "msg": f"Code file error: {e}" if st.session_state.get("lang","en")=="en" else f"코드 파일 오류: {e}"}
 
-    try:
-        codes = data.get("codes", {})
-        if code in codes:
-            entry = codes[code]
-            if not entry.get("active", False):
-                return {"valid": False, "msg": "Inactive code." if lang == "en" else "비활성화된 코드입니다."}
-            expires = entry.get("expires", "")
-            if expires:
-                from datetime import date
-                exp = date.fromisoformat(expires)
-                if date.today() > exp:
-                    return {"valid": False, "msg": f"Code expired ({expires})." if lang == "en" else f"만료된 코드입니다. (만료: {expires})"}
-            return {"valid": True, "plan": entry["plan"], "email": entry.get("email", "")}
-        else:
-            return {"valid": False, "msg": "Code not found." if lang == "en" else "존재하지 않는 코드입니다."}
-    except Exception as e:
-        return {"valid": False, "msg": f"Code file error: {e}" if lang == "en" else f"코드 파일 오류: {e}"}
+    # 파일 없으면 — 개발용 폴백 (배포 전 제거)
+    if code.startswith("STD-"):
+        return {"valid": True, "plan": "standard"}
+    elif code.startswith("PRO-"):
+        return {"valid": True, "plan": "pro"}
+
+    return {"valid": False, "msg": T[st.session_state.get("lang","en")]["code_invalid"]}
+
 
 def load_api_key() -> str:
     # 1) Streamlit Cloud Secrets
@@ -199,22 +197,11 @@ hr { border-color: var(--border); margin: 1rem 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Google Analytics ───
-st.markdown("""
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-1FGG7ZPJET"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-1FGG7ZPJET');
-</script>
-""", unsafe_allow_html=True)
-
 
 # ─────────────────────────────────────────
 # 상수
 # ─────────────────────────────────────────
-BINANCE_URL   = "https://api.binance.us/api/v3/klines"
+BINANCE_URL   = "https://api.binance.com/api/v3/klines"
 INTERVALS     = ["1h", "30m", "15m", "5m", "3m", "1m"]
 INTERVAL_LABELS = {
     "ko": {"1m": "1분봉", "3m": "3분봉", "5m": "5분봉",
@@ -331,9 +318,9 @@ FREE_TF       = ["1h"]
 STANDARD_TF   = ["1h", "30m", "15m", "5m"]
 PRO_TF        = INTERVALS
 
-# Gumroad 구독 링크 
-GUMROAD_STANDARD = "https://sparkle488.gumroad.com/l/kwfzz"
-GUMROAD_PRO      = "https://sparkle488.gumroad.com/l/zktao"
+# Gumroad 구독 링크 (나중에 실제 URL로 교체)
+GUMROAD_STANDARD = "https://gumroad.com/l/your-standard-link"
+GUMROAD_PRO      = "https://gumroad.com/l/your-pro-link"
 
 
 # ─────────────────────────────────────────
@@ -703,6 +690,16 @@ def build_context(status_dict: dict, plan: str = "free") -> str:
     return "\n".join(lines)
 
 
+def md_to_html(text: str) -> str:
+    """마크다운 → HTML 변환 (AI 분석 결과 렌더링용)"""
+    import re
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    text = re.sub(r'`(.+?)`', r'<code style="background:#1e293b;padding:2px 6px;border-radius:4px;font-family:Space Mono,monospace;">\1</code>', text)
+    text = text.replace("\n", "<br>")
+    return text
+
+
 def ask_ai(context: str, api_key: str, lang: str = "en", plan: str = "free") -> str:
     try:
         client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
@@ -746,7 +743,24 @@ def main():
 
         st.markdown("---")
         st.markdown(f"### {t['settings']}")
-        symbol = st.selectbox(t["symbol_label"], ["ETHUSDT", "BTCUSDT", "SOLUSDT"], index=0)
+        plan_now = st.session_state.plan
+        if plan_now == "free":
+            symbol = "ETHUSDT"
+            st.markdown(
+                '<div style="font-size:0.78rem;color:#475569;">Symbol: ETHUSDT<br>(Free 플랜 한정 / Free plan only)</div>',
+                unsafe_allow_html=True,
+            )
+        elif plan_now == "standard":
+            symbol = st.selectbox(
+                t["symbol_label"],
+                ["ETHUSDT", "BTCUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
+            )
+        else:  # pro
+            symbol = st.selectbox(
+                t["symbol_label"],
+                ["ETHUSDT", "BTCUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+                 "ADAUSDT", "DOTUSDT", "AVAXUSDT", "MATICUSDT", "LINKUSDT"],
+            )
 
         st.markdown("---")
         st.markdown(f"### {t['plan_label']}")
@@ -777,7 +791,6 @@ def main():
 
         # ── 구독 플랜 카드
         st.markdown("---")
-        st.markdown(f"### {t['plan_label']}")
         st.markdown(f"""
         <div style="background:#111827;border:1px solid #1e293b;border-radius:10px;padding:0.9rem;margin-bottom:0.6rem;">
           <div style="color:#64748b;font-size:0.72rem;font-family:Space Mono;margin-bottom:0.5rem;">🆓 FREE</div>
@@ -927,7 +940,7 @@ def main():
         st.markdown(f"""
         <div class="ai-box">
           <h4>{t["ai_box_title"]}</h4>
-          <div style="color:#cbd5e1;">{reply.replace(chr(10), "<br>")}</div>
+          <div style="color:#cbd5e1;">{md_to_html(reply)}</div>
         </div>
         """, unsafe_allow_html=True)
 
